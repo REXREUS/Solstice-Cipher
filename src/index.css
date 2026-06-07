@@ -330,6 +330,16 @@ p {
   overflow: hidden;
 }
 
+.nodes-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0;
+  padding-right: 4px;
+}
+
 .sidebar-title {
   font-size: 15px;
   font-family: var(--font-header);
@@ -435,6 +445,9 @@ p {
   padding: 24px;
   position: relative;
   background: radial-gradient(circle at center, rgba(8, 16, 40, 0.4) 0%, rgba(3, 6, 15, 0.85) 100%);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Puzzle Board Bezel Frame - Cyberpunk hardware simulator */

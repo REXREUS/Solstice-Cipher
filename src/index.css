@@ -55,8 +55,8 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-primary);
   font-family: var(--font-display);
-  overflow-x: hidden;
-  min-height: 100vh;
+  overflow: hidden;
+  height: 100vh;
   position: relative;
   background-image: var(--solstice-bg-glow);
   background-attachment: fixed;
@@ -171,11 +171,13 @@ p {
 .game-container {
   max-width: 1650px;
   margin: 0 auto;
-  padding: 16px 20px 20px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 100vh;
+  gap: 12px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 .game-header {
@@ -323,6 +325,9 @@ p {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar-title {
@@ -637,8 +642,8 @@ p {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: calc(100vh - 120px);
-  min-height: 550px;
+  height: 100%;
+  min-height: 0;
 }
 
 .terminal-header {

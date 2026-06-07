@@ -398,18 +398,24 @@ export default function App() {
 
   // --- API / Chat State ---
   const [encryptedApiKey, setEncryptedApiKey] = useState(() => localStorage.getItem("solstice_encrypted_api_key") || "");
-  const [geminiApiKey, setGeminiApiKey] = useState(""); // Kept strictly in-memory (React State)
+  const [geminiApiKey, setGeminiApiKey] = useState(() => sessionStorage.getItem("solstice_decrypted_api_key") || ""); // Cached in sessionStorage for refresh
   const [passphraseInput, setPassphraseInput] = useState("");
   const [settingsPassphrase, setSettingsPassphrase] = useState("");
   const [decryptionError, setDecryptionError] = useState("");
-  const [offlineMode, setOfflineMode] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem("solstice_offline_mode") === "true");
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isApiLocked, setIsApiLocked] = useState(() => {
     const hasSavedKey = localStorage.getItem("solstice_encrypted_api_key");
+    const offline = localStorage.getItem("solstice_offline_mode") === "true";
+    const cachedKey = sessionStorage.getItem("solstice_decrypted_api_key");
+    if (offline) return false;
+    if (cachedKey) return false;
     return !!hasSavedKey; // Locked if there is a saved encrypted key
   });
 
   const [terminalHistory, setTerminalHistory] = useState([]);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const lastLevelIdRef = useRef(levels[activeLevelIdx].id);
   const [terminalInput, setTerminalInput] = useState("");
   const [isNpcTyping, setIsNpcTyping] = useState(false);
   const [verdictDeclared, setVerdictDeclared] = useState(false);
@@ -432,7 +438,17 @@ export default function App() {
 
     if (savedLevels) setUnlockedLevels(JSON.parse(savedLevels));
     if (savedLore) setUnlockedLore(JSON.parse(savedLore));
-    if (savedAch) setUnlockedAchievements(JSON.parse(savedAch));
+    if (savedAch) {
+      const parsedAch = JSON.parse(savedAch);
+      setUnlockedAchievements(parsedAch);
+      
+      // Update verdict status for the initial active level if it is solved
+      const currentLevelSolved = parsedAch.includes(`level-${levels[activeLevelIdx].id}-solved`);
+      if (currentLevelSolved) {
+        setVerdictDeclared(true);
+        setVerdictSuccess(true);
+      }
+    }
   }, []);
 
   // Listen for first user gesture to unlock AudioContext
@@ -458,18 +474,61 @@ export default function App() {
 
   // Load level configuration (runs whenever level changes)
   useEffect(() => {
-    setPlacedComponents({});
+    // 1. Load board layout from localStorage
+    const savedBoard = localStorage.getItem(`solstice_board_level_${level.id}`);
+    if (savedBoard) {
+      try {
+        setPlacedComponents(JSON.parse(savedBoard));
+      } catch (e) {
+        setPlacedComponents({});
+      }
+    } else {
+      setPlacedComponents({});
+    }
+
+    // 2. Load terminal history from localStorage
+    const savedHistory = localStorage.getItem(`solstice_chat_level_${level.id}`);
+    if (savedHistory) {
+      try {
+        setTerminalHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        setTerminalHistory([
+          { sender: "system", text: `DECRYPTION LOG: Grid connection established. Decrypted entity: ${level.npc.name}` },
+          { sender: "ai", text: level.npc.openingMessage }
+        ]);
+      }
+    } else {
+      setTerminalHistory([
+        { sender: "system", text: `DECRYPTION LOG: Grid connection established. Decrypted entity: ${level.npc.name}` },
+        { sender: "ai", text: level.npc.openingMessage }
+      ]);
+    }
+
+    // Update level ref
+    lastLevelIdRef.current = level.id;
+
     setSolsticeMode(level.solsticeMode || "day");
     setSelectedTool(null);
-    setVerdictDeclared(false);
-    setVerdictSuccess(false);
-    
-    // Set initial dialogue opening message
-    setTerminalHistory([
-      { sender: "system", text: `DECRYPTION LOG: Grid connection established. Decrypted entity: ${level.npc.name}` },
-      { sender: "ai", text: level.npc.openingMessage }
-    ]);
+
+    // 3. Set solved/verdict state based on achievements
+    const isSolved = unlockedAchievements.includes(`level-${level.id}-solved`);
+    setVerdictDeclared(isSolved);
+    setVerdictSuccess(isSolved);
   }, [activeLevelIdx]);
+
+  // Save placedComponents to localStorage
+  useEffect(() => {
+    if (level && lastLevelIdRef.current === level.id) {
+      localStorage.setItem(`solstice_board_level_${level.id}`, JSON.stringify(placedComponents));
+    }
+  }, [placedComponents, level.id]);
+
+  // Save terminalHistory to localStorage
+  useEffect(() => {
+    if (level && terminalHistory.length > 0 && lastLevelIdRef.current === level.id) {
+      localStorage.setItem(`solstice_chat_level_${level.id}`, JSON.stringify(terminalHistory));
+    }
+  }, [terminalHistory, level.id]);
 
   // Scroll terminal to bottom
   useEffect(() => {
@@ -692,10 +751,12 @@ export default function App() {
     if (cleanKey === "") {
       // Clear key
       localStorage.removeItem("solstice_encrypted_api_key");
+      sessionStorage.removeItem("solstice_decrypted_api_key");
       setEncryptedApiKey("");
       setGeminiApiKey("");
       setIsApiLocked(false);
       setOfflineMode(true);
+      localStorage.setItem("solstice_offline_mode", "true");
       setShowSettingsModal(false);
       audio.playSuccess();
       return;
@@ -710,6 +771,8 @@ export default function App() {
     // Encrypt key locally
     const encrypted = crypto.encrypt(cleanKey, cleanPass);
     localStorage.setItem("solstice_encrypted_api_key", encrypted);
+    sessionStorage.setItem("solstice_decrypted_api_key", cleanKey);
+    localStorage.removeItem("solstice_offline_mode");
     
     setEncryptedApiKey(encrypted);
     setIsApiLocked(false);
@@ -733,8 +796,10 @@ export default function App() {
 
     if (decrypted && (decrypted.startsWith("AIza") || decrypted.length >= 10)) {
       setGeminiApiKey(decrypted);
+      sessionStorage.setItem("solstice_decrypted_api_key", decrypted);
       setIsApiLocked(false);
       setOfflineMode(false);
+      localStorage.removeItem("solstice_offline_mode");
       setDecryptionError("");
       setPassphraseInput("");
       audio.playSuccess();
@@ -748,6 +813,7 @@ export default function App() {
   const handlePlayOffline = () => {
     audio.playRotate();
     setOfflineMode(true);
+    localStorage.setItem("solstice_offline_mode", "true");
     setIsApiLocked(false);
   };
 
@@ -810,7 +876,7 @@ export default function App() {
         {/* Left Sidebar: Levels selection */}
         <section className="glass-panel sidebar-panel">
           <h2 className="sidebar-title"> Observatory Nodes</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="nodes-list-container">
             {levels.map((lvl, index) => {
               const isUnlocked = unlockedLevels.includes(lvl.id);
               const isActive = activeLevelIdx === index;
@@ -1413,7 +1479,7 @@ export default function App() {
           <div className="crt-screen">
             <MatrixRain />
             {isApiLocked ? (
-              <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", fontFamily: "var(--font-mono)", color: "var(--crt-color)" }}>
+              <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", fontFamily: "var(--font-mono)", color: "var(--crt-color)", position: "relative", zIndex: 10 }}>
                 <div style={{ textAlign: "center", marginBottom: "16px" }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--crt-color)" strokeWidth="1.5" style={{ filter: "drop-shadow(0 0 4px var(--crt-glow))", marginBottom: "8px" }}>
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -1488,8 +1554,50 @@ export default function App() {
                     ) : (
                       <div style={{ textAlign: "center", fontSize: "13px" }}>
                         {verdictSuccess ? (
-                          <div style={{ color: "#34d399", fontWeight: "bold" }}>
-                            ✓ VERDICT APPROVED: Mind pattern verified successfully. Observatory Node DECRYPTED.
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center" }}>
+                            <div style={{ color: "#34d399", fontWeight: "bold", fontSize: "12px", textAlign: "center" }}>
+                              ✓ VERDICT APPROVED: Mind pattern verified successfully. Observatory Node DECRYPTED.
+                            </div>
+                            {activeLevelIdx < levels.length - 1 ? (
+                              <button 
+                                className="verdict-btn"
+                                style={{ 
+                                  borderColor: "var(--solstice-color)", 
+                                  color: "var(--solstice-color)", 
+                                  textShadow: "0 0 4px var(--solstice-glow)",
+                                  marginTop: "4px",
+                                  padding: "4px 10px",
+                                  fontSize: "10px"
+                                }}
+                                onClick={() => {
+                                  audio.playSuccess();
+                                  setActiveLevelIdx(activeLevelIdx + 1);
+                                }}
+                              >
+                                PROCEED TO NEXT OBS-NODE
+                              </button>
+                            ) : (
+                              <button 
+                                className="verdict-btn"
+                                style={{ 
+                                  borderColor: "var(--solstice-color)", 
+                                  color: "#03060f", 
+                                  background: "var(--solstice-color)",
+                                  textShadow: "none",
+                                  boxShadow: "0 0 10px var(--solstice-glow)",
+                                  marginTop: "4px",
+                                  padding: "4px 10px",
+                                  fontSize: "10px",
+                                  animation: "active-panel-pulse 2s infinite ease-in-out"
+                                }}
+                                onClick={() => {
+                                  audio.playSuccess();
+                                  setShowSubmissionModal(true);
+                                }}
+                              >
+                                GENERATE GAME JAM SUBMISSION
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div style={{ color: "#f87171", fontWeight: "bold" }}>
@@ -1695,6 +1803,11 @@ export default function App() {
         </div>
       )}
 
+      {/* Game Jam Submission Modal */}
+      {showSubmissionModal && (
+        <GameJamSubmissionModal onClose={() => setShowSubmissionModal(false)} />
+      )}
+
       {/* 4. Float Toast Notification System */}
       <div className="toast-container">
         {toasts.map(toast => (
@@ -1744,3 +1857,159 @@ export default function App() {
     return null;
   }
 }
+
+// Game Jam Submission Draft Modal Component
+const GameJamSubmissionModal = ({ onClose }) => {
+  const [copied, setCopied] = useState(false);
+
+  const submissionMarkdown = `*This is a submission for the [June Solstice Game Jam](https://dev.to/challenges/june-game-jam-2026-06-03)*
+
+## What I Built
+**Solstice Cipher: The Turing Test of Light and Shadow** is a premium, retro-futuristic browser-based puzzle and narrative game. 
+
+The game combines two core ideas:
+1. **Light & Shadow Routing Puzzles (The Solstice Theme)**: Players align optical mirrors, prism splitters, and color filters on a coordinates grid. A central "Solstice Toggle" shifts the cycle from Day to Night, dynamically updating the active light sources and receptors, requiring the routing algorithm to adapt.
+2. **Conversational Turing Tests (The Alan Turing Theme)**: Calibrating the light beams decrypts a "digital consciousness." Using a vintage CRT computer terminal, players query the decoded mind to run a Turing Test, determining whether they are talking to a simulated AI or a reconstructed human consciousness.
+
+Our goal was to design a beautiful, high-fidelity gaming experience that celebrates Bletchley Park decryption, LGBTQIA+ Pride milestones, and Juneteenth, while showcasing local security safety and dynamic generative conversations.
+
+## Video Demo
+*Please enjoy this video walkthrough demonstrating the optical calibration mechanics, the canvas-based diagnostic readouts, the live Gemini CRT terminal conversations, and cycle transitions:*
+
+<!-- Upload a video to YouTube, Loom, or DEV.to and embed it here! -->
+
+## Code
+The repository is open-source and hosted entirely on GitHub:
+
+{% github https://github.com/YOUR_USERNAME/YOUR_REPO_NAME %}
+
+### Cloudflare Pages Deploy Instructions
+We integrated **Cloudflare Wrangler** to make building and publishing this game jam submission a single-command process. 
+
+#### Configuration (\`wrangler.toml\`)
+\`\`\`toml
+name = "solstice-cipher"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-06-08"
+\`\`\`
+
+#### CLI Deployment Commands
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   \`\`\`
+2. Build and deploy directly to Cloudflare Pages:
+   \`\`\`bash
+   npm run deploy
+   \`\`\`
+
+## How I Built It
+The project is built entirely as a single-page application using **React, Vite, and Vanilla CSS** with no external CDN assets.
+
+### 1. Interactive HUD & Glassmorphism Design
+Instead of rendering on a flat 2D canvas, we designed a cybernetic HUD:
+- **Frosted Glass Panels**: Semi-transparent HSL colors coupled with heavy backdrop blurring (\`blur(25px)\`). Active panels feature animated borders that pulse with keyframe glows.
+- **Drifting Gas Nebulae**: An animating canvas drawing twinkling stars, cosmic dust particles, shooting stars, and rotating nebulae (warm solar wind in Day cycle, violet/cyan clouds in Night cycle).
+- **Holographic SVG Nodes**: Custom vector drawings for blocks (hazard caution stripes), splitters (refracting prisms), mirrors (calibration gears), emitters (nozzles that rotate towards direction), and receivers (featuring concentric calibration rings that rotate in opposite directions).
+- **Oscilloscope Waveform Widget**: A canvas-based telemetry display in the sidebar drawing procedural sinus waves that speed up and fluctuate based on active lasers.
+- **CRT Matrix Rain**: The vintage CRT screen uses phosphor scanline gradients, vignette overlays, and a low-opacity falling binary Matrix stream in the background behind message cards.
+
+### 2. Raycaster Engine
+A recursive **Depth-First Search (DFS)** raycast engine calculates light propagation:
+- Translates mirror angles (45°/135°) to redirect paths.
+- Computes split rays at prisms.
+- Validates wave colors through Red, Green, and Blue filter chambers.
+- **Infinite Loop Prevention**: Tracks coordinates and incoming vector directions to stop infinite reflections.
+- Spawns spark nodes and expanding waves at all reflection and absorption junctions.
+
+### 3. Procedural Audio Synthesis
+All clicks, snaps, alarms, success arpeggios, and baseline laser hums are generated procedurally using the **Web Audio API** oscillators (zero audio asset downloads required).
+
+### 4. Client-Side secure Key Storage
+To protect user keys:
+- Implements locally salted encryption using stretch hashing and XOR ciphers.
+- Detects Gemini API keys in local storage and prompts for the user passphrase to decrypt them strictly in-memory.
+- Falls back to a robust keyword-matching local simulator dialogue if offline or key is cleared.
+
+## Prize Category
+
+### Best Ode to Alan Turing
+- **Imitation Game Mechanics**: The core progression centers on Turing's benchmark. Players chat, examine logical contradictions, and submit verdicts.
+- **Bletchley Park Cryptography**: Level 1 (Turing Machine) and Level 5 (Turing's Dream) pay direct tribute to Turing's computing limits, Turing Test philosophy, and LGBTQIA+ Pride.
+
+### Best Google AI Usage
+- **Google Gemini API**: Full integration with \`gemini-1.5-flash\` for open-ended philosophical AI dialogue.
+- **Persona Context Mapping**: System instructions mold dynamic replies based on NPC backstories (academic Turing-AI, multiple choral voices in Freedom Collective, mythical clockkeeper Warden, and flowers-in-hair activist Marsha-AI).`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(submissionMarkdown);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="glass-panel modal-content" style={{ maxWidth: "650px", width: "90%", maxHeight: "85vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ flexShrink: 0 }}>
+          <h2>Game Jam Submission Draft</h2>
+          <button className="modal-close-btn" onClick={onClose}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div style={{ flexGrow: 1, overflowY: "auto", paddingRight: "4px", marginBottom: "16px", fontSize: "14px", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <p>
+            Congratulations! You have decrypted all 5 observatory nodes. Below is your formatted markdown submission for the **June Solstice Game Jam**.
+          </p>
+          <div style={{ position: "relative", flexGrow: 1, display: "flex", flexDirection: "column", minHeight: "200px" }}>
+            <textarea
+              readOnly
+              value={submissionMarkdown}
+              style={{
+                width: "100%",
+                flexGrow: 1,
+                minHeight: "220px",
+                background: "rgba(2, 4, 10, 0.8)",
+                border: "1px solid rgba(0, 240, 255, 0.2)",
+                borderRadius: "6px",
+                padding: "12px",
+                color: "#ffffff",
+                fontFamily: "var(--font-mono)",
+                fontSize: "12px",
+                resize: "none",
+                outline: "none"
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, borderTop: "1px solid rgba(0, 240, 255, 0.15)", paddingTop: "12px" }}>
+          <a 
+            href="https://dev.to/challenges/june-game-jam-2026-06-03" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn-primary"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px" }}
+          >
+            <span>DEV.TO JAM PAGE</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+          <button 
+            className="btn-solstice" 
+            onClick={handleCopy}
+            style={{ fontSize: "11px", padding: "8px 20px" }}
+          >
+            {copied ? "COPIED TO CLIPBOARD!" : "COPY SUBMISSION DRAFT"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

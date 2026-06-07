@@ -35,8 +35,8 @@ const achievementsList = [
   { id: "turing-master", title: "Supreme Judge", desc: "Submitted correct Turing Test verdicts for all 5 levels." }
 ];
 
-// Starfield background effect
-const Starfield = () => {
+// Starfield background effect (supports Day solar flares and Night space nebulae)
+const Starfield = ({ mode }) => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -44,6 +44,7 @@ const Starfield = () => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     let animationFrameId;
+    let time = 0;
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -53,32 +54,307 @@ const Starfield = () => {
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    // Generate stars
-    const stars = Array.from({ length: 80 }).map(() => ({
+    // Generate stars and floating dust particles
+    const stars = Array.from({ length: 100 }).map(() => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      radius: Math.random() * 1.5,
-      twinkleSpeed: 0.005 + Math.random() * 0.01,
-      brightness: Math.random()
+      radius: 0.5 + Math.random() * 1.8,
+      twinkleSpeed: 0.003 + Math.random() * 0.007,
+      brightness: Math.random(),
+      speedX: (Math.random() - 0.5) * 0.05,
+      speedY: (Math.random() - 0.5) * 0.05,
+      color: Math.random() > 0.85 
+        ? (mode === "day" ? "rgba(253, 186, 116, 0.8)" : "rgba(103, 232, 249, 0.8)")
+        : "rgba(255, 255, 255, 0.8)"
     }));
 
+    // Drifting gas clouds for nebula
+    const nebulaClouds = [
+      { x: canvas.width * 0.3, y: canvas.height * 0.3, vx: 0.015, vy: 0.01, size: 450, colorDay: "rgba(245, 158, 11, 0.07)", colorNight: "rgba(139, 92, 246, 0.08)" },
+      { x: canvas.width * 0.7, y: canvas.height * 0.6, vx: -0.01, vy: -0.012, size: 600, colorDay: "rgba(239, 68, 68, 0.04)", colorNight: "rgba(0, 240, 255, 0.06)" }
+    ];
+
+    // Shooting stars
+    let shootingStar = null;
+    const spawnShootingStar = () => {
+      shootingStar = {
+        x: Math.random() * canvas.width * 0.8,
+        y: Math.random() * canvas.height * 0.4,
+        dx: 4 + Math.random() * 6,
+        dy: 2 + Math.random() * 3,
+        length: 80 + Math.random() * 120,
+        life: 1.0,
+        decay: 0.015 + Math.random() * 0.02
+      };
+    };
+
     const draw = () => {
+      time += 0.002;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      
+
+      // 1. Draw Nebula Clouds
+      nebulaClouds.forEach(cloud => {
+        cloud.x += cloud.vx;
+        cloud.y += cloud.vy;
+        
+        // Bounce off bounds
+        if (cloud.x < 0 || cloud.x > canvas.width) cloud.vx = -cloud.vx;
+        if (cloud.y < 0 || cloud.y > canvas.height) cloud.vy = -cloud.vy;
+
+        // Draw radial cloud
+        const grad = ctx.createRadialGradient(
+          cloud.x + Math.sin(time) * 30, cloud.y + Math.cos(time) * 30, 0,
+          cloud.x, cloud.y, cloud.size
+        );
+        const color = mode === "day" ? cloud.colorDay : cloud.colorNight;
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, "rgba(3, 6, 15, 0)");
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 2. Draw Solar Corona in Day mode
+      if (mode === "day") {
+        const cx = canvas.width / 2;
+        const cy = 0; // Top middle
+        const pulseRadius = 350 + Math.sin(time * 3) * 20;
+
+        const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseRadius);
+        sunGrad.addColorStop(0, "rgba(245, 158, 11, 0.15)");
+        sunGrad.addColorStop(0.3, "rgba(251, 146, 60, 0.06)");
+        sunGrad.addColorStop(1, "rgba(3, 6, 15, 0)");
+
+        ctx.fillStyle = sunGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 3. Draw Stars
       stars.forEach(star => {
         star.brightness += star.twinkleSpeed;
         if (star.brightness > 1 || star.brightness < 0) {
           star.twinkleSpeed = -star.twinkleSpeed;
         }
-        
+
+        // Drifting motion
+        star.x += star.speedX;
+        star.y += star.speedY;
+
+        // Wrap around screen
+        if (star.x < 0) star.x = canvas.width;
+        if (star.x > canvas.width) star.x = 0;
+        if (star.y < 0) star.y = canvas.height;
+        if (star.y > canvas.height) star.y = 0;
+
         ctx.save();
-        ctx.globalAlpha = Math.abs(star.brightness);
+        ctx.globalAlpha = Math.max(0.1, Math.min(1, Math.abs(star.brightness)));
+        ctx.fillStyle = star.color;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
+
+      // 4. Draw Shooting Star (mostly in Night mode)
+      if (mode === "night") {
+        if (!shootingStar && Math.random() < 0.003) {
+          spawnShootingStar();
+        }
+
+        if (shootingStar) {
+          ctx.save();
+          ctx.globalAlpha = shootingStar.life;
+          const grad = ctx.createLinearGradient(
+            shootingStar.x, shootingStar.y,
+            shootingStar.x - shootingStar.dx * 10, shootingStar.y - shootingStar.dy * 10
+          );
+          grad.addColorStop(0, "rgba(0, 240, 255, 1)");
+          grad.addColorStop(0.4, "rgba(139, 92, 246, 0.5)");
+          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(shootingStar.x, shootingStar.y);
+          ctx.lineTo(shootingStar.x - shootingStar.dx * 6, shootingStar.y - shootingStar.dy * 6);
+          ctx.stroke();
+          ctx.restore();
+
+          // Move
+          shootingStar.x += shootingStar.dx;
+          shootingStar.y += shootingStar.dy;
+          shootingStar.life -= shootingStar.decay;
+
+          if (shootingStar.life <= 0) {
+            shootingStar = null;
+          }
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [mode]);
+
+  return <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: -1, pointerEvents: "none" }} />;
+};
+
+// Procedural Oscilloscope / Signal Spectrogram Canvas for HUD Telemetry
+const TelemetryOscilloscope = ({ activeBeamCount, isSolved, mode }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+    let phase = 0;
+
+    const draw = () => {
+      if (!canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const midY = height / 2;
+
+      // Draw grid background
+      ctx.strokeStyle = "rgba(0, 240, 255, 0.04)";
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < width; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 12) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Draw waves
+      const strokeColor = mode === "day" ? "rgba(245, 158, 11, 0.8)" : "rgba(0, 240, 255, 0.8)";
+      ctx.strokeStyle = strokeColor;
+      ctx.shadowColor = strokeColor;
+      ctx.shadowBlur = 3;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+
+      phase += isSolved ? 0.15 : activeBeamCount > 0 ? 0.08 : 0.02;
+
+      for (let x = 0; x < width; x++) {
+        let y = midY;
+        if (isSolved) {
+          y += Math.sin(x * 0.05 + phase) * 12 + Math.cos(x * 0.1 - phase * 1.5) * 6;
+        } else if (activeBeamCount > 0) {
+          const amp = 8 + activeBeamCount * 2;
+          const freq = 0.03 + activeBeamCount * 0.005;
+          y += Math.sin(x * freq - phase) * amp + (Math.random() - 0.5) * 1.5;
+        } else {
+          y += Math.sin(x * 0.01 - phase) * 2 + (Math.random() - 0.5) * 0.8;
+        }
+
+        if (x === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Telemetry Labels
+      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      ctx.font = "8px monospace";
+      ctx.fillText(isSolved ? "STATUS: CALIBRATED" : activeBeamCount > 0 ? "STATUS: CALIBRATING..." : "STATUS: STANDBY", 6, 12);
+      ctx.fillText(`SIG.FRQ: ${isSolved ? "440.00Hz" : activeBeamCount > 0 ? `${(activeBeamCount * 80).toFixed(2)}Hz` : "12.00Hz"}`, 6, height - 6);
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [activeBeamCount, isSolved, mode]);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      width="270" 
+      height="65" 
+      style={{ 
+        background: "rgba(2, 4, 10, 0.65)", 
+        border: "1px solid rgba(0, 240, 255, 0.12)", 
+        borderRadius: "8px", 
+        marginTop: "12px",
+        display: "block",
+        width: "100%",
+        boxShadow: "inset 0 1px 4px rgba(0,0,0,0.8)"
+      }} 
+    />
+  );
+};
+
+// Falling Binary Matrix Rain for Retro CRT Background
+const MatrixRain = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+
+    const resizeCanvas = () => {
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+      }
+    };
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    const chars = "0101010101TURINGCODEBREAKING";
+    const fontSize = 10;
+    const columns = Math.floor(canvas.width / fontSize) + 1;
+    const drops = Array(columns).fill(1);
+
+    const draw = () => {
+      if (!canvas) return;
+      ctx.fillStyle = "rgba(2, 7, 3, 0.12)"; // Phosphor dark green fade
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "rgba(57, 255, 20, 0.08)"; // Low opacity green phosphor
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        ctx.fillText(text, x, y);
+
+        if (y > canvas.height && Math.random() > 0.98) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
 
       animationFrameId = requestAnimationFrame(draw);
     };
@@ -91,7 +367,20 @@ const Starfield = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: -1, pointerEvents: "none" }} />;
+  return (
+    <canvas 
+      ref={canvasRef} 
+      style={{ 
+        position: "absolute", 
+        top: 0, 
+        left: 0, 
+        width: "100%", 
+        height: "100%", 
+        zIndex: 1, 
+        pointerEvents: "none"
+      }} 
+    />
+  );
 };
 
 export default function App() {
@@ -114,6 +403,7 @@ export default function App() {
   const [settingsPassphrase, setSettingsPassphrase] = useState("");
   const [decryptionError, setDecryptionError] = useState("");
   const [offlineMode, setOfflineMode] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [isApiLocked, setIsApiLocked] = useState(() => {
     const hasSavedKey = localStorage.getItem("solstice_encrypted_api_key");
     return !!hasSavedKey; // Locked if there is a saved encrypted key
@@ -143,6 +433,22 @@ export default function App() {
     if (savedLevels) setUnlockedLevels(JSON.parse(savedLevels));
     if (savedLore) setUnlockedLore(JSON.parse(savedLore));
     if (savedAch) setUnlockedAchievements(JSON.parse(savedAch));
+  }, []);
+
+  // Listen for first user gesture to unlock AudioContext
+  useEffect(() => {
+    const handleGesture = () => {
+      setHasInteracted(true);
+      audio.resume();
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("keydown", handleGesture);
+    };
+    window.addEventListener("click", handleGesture);
+    window.addEventListener("keydown", handleGesture);
+    return () => {
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("keydown", handleGesture);
+    };
   }, []);
 
   // Set page data-theme based on day/night mode
@@ -175,15 +481,15 @@ export default function App() {
   const activeReceiversCount = level.receivers.filter(r => r.activeIn === "both" || r.activeIn === solsticeMode).length;
   const isPuzzleSolved = activatedReceivers.length === activeReceiversCount && activeReceiversCount > 0;
 
-  // Sound hum trigger when lasers are active
+  // Sound hum trigger when lasers are active and user has interacted
   useEffect(() => {
-    if (paths.length > 0) {
+    if (paths.length > 0 && hasInteracted) {
       audio.startHum();
     } else {
       audio.stopHum();
     }
     return () => audio.stopHum();
-  }, [paths]);
+  }, [paths, hasInteracted]);
 
   // Play success sound when puzzle gets solved first time
   const lastSolvedRef = useRef(false);
@@ -450,7 +756,7 @@ export default function App() {
 
   return (
     <div className="game-container">
-      <Starfield />
+      <Starfield mode={solsticeMode} />
       {/* 1. Game Header */}
       <header className="glass-panel game-header">
         <div className="logo-section">
@@ -536,6 +842,7 @@ export default function App() {
             <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "var(--text-secondary)" }}>Active Node Info</h3>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px" }}>{level.theme}</p>
             <p style={{ fontSize: "12px" }}>{level.description}</p>
+            <TelemetryOscilloscope activeBeamCount={paths.length} isSolved={isPuzzleSolved} mode={solsticeMode} />
           </div>
         </section>
 
@@ -550,6 +857,25 @@ export default function App() {
 
           <div className="puzzle-board-wrapper">
             <svg className="puzzle-board-svg" viewBox="0 0 100 100">
+              <defs>
+                {/* Block Metal Texture */}
+                <linearGradient id="block-metal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#1e293b" />
+                  <stop offset="50%" stopColor="#0f172a" />
+                  <stop offset="100%" stopColor="#020617" />
+                </linearGradient>
+                {/* Receiver Housing Gradient */}
+                <radialGradient id="receiver-housing-grad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#020617" />
+                  <stop offset="85%" stopColor="#0f172a" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#1e293b" />
+                </radialGradient>
+                {/* Emitter Housing Gradient */}
+                <linearGradient id="emitter-housing-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1e293b" />
+                  <stop offset="100%" stopColor="#0f172a" />
+                </linearGradient>
+              </defs>
               {/* Sci-Fi Decorative Corner Brackets */}
               <path d="M 4,12 L 4,4 L 12,4" stroke={varColorSolstice()} strokeWidth="0.75" fill="none" opacity="0.6" />
               <path d="M 88,4 L 96,4 L 96,12" stroke={varColorSolstice()} strokeWidth="0.75" fill="none" opacity="0.6" />
@@ -600,47 +926,48 @@ export default function App() {
                 });
               })}
 
-              {/* Draw Level Blocks (Steel warnings blocks) */}
+              {/* Draw Level Blocks (Industrial Hazard Blocks) */}
               {level.blocks.map((block, idx) => {
                 const cellW = 84 / level.gridSize;
                 const cellH = 84 / level.gridSize;
                 const bx = 8 + block.x * cellW;
                 const by = 8 + block.y * cellH;
+                const padding = cellW * 0.08;
                 return (
                   <g key={`block-${idx}`}>
+                    {/* Metal housing */}
                     <rect
-                      x={bx + 0.5}
-                      y={by + 0.5}
-                      width={cellW - 1}
-                      height={cellH - 1}
-                      rx="3"
-                      fill="rgba(15, 23, 42, 0.9)"
-                      stroke="rgba(0, 240, 255, 0.15)"
-                      strokeWidth="0.75"
+                      x={bx + padding}
+                      y={by + padding}
+                      width={cellW - padding * 2}
+                      height={cellH - padding * 2}
+                      rx="6"
+                      fill="url(#block-metal-grad)"
+                      stroke="rgba(0, 240, 255, 0.3)"
+                      strokeWidth="0.8"
+                      style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}
                     />
-                    <line 
-                      x1={bx + 3} 
-                      y1={by + 3} 
-                      x2={bx + cellW - 3} 
-                      y2={by + cellH - 3} 
-                      stroke="rgba(0, 240, 255, 0.2)" 
-                      strokeWidth="1.5" 
-                      strokeDasharray="2, 2"
+                    {/* Danger caution stripes pattern */}
+                    <line x1={bx + padding + 4} y1={by + padding + 2} x2={bx + cellW - padding - 2} y2={by + cellH - padding - 4} stroke="rgba(245, 158, 11, 0.4)" strokeWidth="2.5" strokeDasharray="3, 4" />
+                    <line x1={bx + padding + 2} y1={by + padding + 4} x2={bx + cellW - padding - 4} y2={by + cellH - padding - 2} stroke="rgba(245, 158, 11, 0.4)" strokeWidth="2.5" strokeDasharray="3, 4" />
+                    {/* Centered Caution logo or crosshairs */}
+                    <polygon
+                      points={`${bx + cellW/2},${by + cellH/2 - cellW/6} ${bx + cellW/2 - cellW/6},${by + cellH/2 + cellW/6} ${bx + cellW/2 + cellW/6},${by + cellH/2 + cellW/6}`}
+                      fill="none"
+                      stroke="var(--solstice-color)"
+                      strokeWidth="0.8"
+                      opacity="0.85"
                     />
-                    <line 
-                      x1={bx + cellW - 3} 
-                      y1={by + 3} 
-                      x2={bx + 3} 
-                      y2={by + cellH - 3} 
-                      stroke="rgba(0, 240, 255, 0.2)" 
-                      strokeWidth="1.5" 
-                      strokeDasharray="2, 2"
-                    />
+                    {/* Inner glowing node dots */}
+                    <circle cx={bx + padding + 3} cy={by + padding + 3} r="0.6" fill="var(--solstice-color)" />
+                    <circle cx={bx + cellW - padding - 3} cy={by + padding + 3} r="0.6" fill="var(--solstice-color)" />
+                    <circle cx={bx + padding + 3} cy={by + cellH - padding - 3} r="0.6" fill="var(--solstice-color)" />
+                    <circle cx={bx + cellW - padding - 3} cy={by + cellH - padding - 3} r="0.6" fill="var(--solstice-color)" />
                   </g>
                 );
               })}
 
-              {/* Draw Receivers */}
+              {/* Draw Receivers (Holographic energy targets) */}
               {level.receivers.map((receiver, idx) => {
                 const cellW = 84 / level.gridSize;
                 const cellH = 84 / level.gridSize;
@@ -651,51 +978,87 @@ export default function App() {
                 const rColor = receiver.color === "red" ? "var(--laser-red)" : receiver.color === "green" ? "var(--laser-green)" : receiver.color === "yellow" ? "var(--laser-yellow)" : receiver.color === "blue" ? "var(--laser-blue)" : "var(--laser-white)";
 
                 return (
-                  <g key={`receiver-${idx}`} opacity={isActive ? 1 : 0.2}>
-                    {/* Ring housing */}
+                  <g key={`receiver-${idx}`} opacity={isActive ? 1 : 0.15}>
+                    {/* Outer Calibration Ring - Spins! */}
                     <circle
                       cx={rx}
                       cy={ry}
-                      r={cellW / 3}
-                      fill="rgba(2, 4, 10, 0.9)"
-                      stroke={rColor}
-                      strokeWidth={isActivated ? 1.5 : 0.75}
-                      style={{ filter: isActivated ? `drop-shadow(0 0 6px ${rColor})` : "none" }}
-                    />
-                    {/* Inner Target Core */}
-                    <circle
-                      cx={rx}
-                      cy={ry}
-                      r={cellW / 6}
-                      fill={isActivated ? rColor : "transparent"}
+                      r={cellW / 2.3}
+                      fill="none"
                       stroke={rColor}
                       strokeWidth="0.5"
-                      className={isActivated ? "receiver-glow" : ""}
+                      strokeDasharray="2, 4"
+                      opacity="0.5"
+                    >
+                      <animateTransform attributeName="transform" type="rotate" from={`0 ${rx} ${ry}`} to={`360 ${rx} ${ry}`} dur="15s" repeatCount="indefinite" />
+                    </circle>
+
+                    {/* Secondary Dotted Ring - Spins opposite direction */}
+                    <circle
+                      cx={rx}
+                      cy={ry}
+                      r={cellW / 2.8}
+                      fill="none"
+                      stroke={rColor}
+                      strokeWidth="0.6"
+                      strokeDasharray="4, 2"
+                      opacity="0.75"
+                    >
+                      <animateTransform attributeName="transform" type="rotate" from={`360 ${rx} ${ry}`} to={`0 ${rx} ${ry}`} dur="8s" repeatCount="indefinite" />
+                    </circle>
+
+                    {/* Housing Circle */}
+                    <circle
+                      cx={rx}
+                      cy={ry}
+                      r={cellW / 3.4}
+                      fill="url(#receiver-housing-grad)"
+                      stroke={rColor}
+                      strokeWidth={isActivated ? 1.5 : 0.8}
+                      style={{ filter: isActivated ? `drop-shadow(0 0 8px ${rColor})` : "none" }}
                     />
+
+                    {/* Inner Target Crosshairs */}
+                    <line x1={rx - cellW/3.8} y1={ry} x2={rx + cellW/3.8} y2={ry} stroke={rColor} strokeWidth="0.4" opacity="0.4" />
+                    <line x1={rx} y1={ry - cellW/3.8} x2={rx} y2={ry + cellW/3.8} stroke={rColor} strokeWidth="0.4" opacity="0.4" />
+
                     {/* Active Ripple rings */}
                     {isActivated && (
                       <circle
                         cx={rx}
                         cy={ry}
-                        r={cellW / 3}
+                        r={cellW / 3.4}
                         fill="none"
                         stroke={rColor}
-                        strokeWidth="1"
-                        opacity="0.8"
+                        strokeWidth="1.2"
+                        opacity="0.85"
                       >
-                        <animate attributeName="r" values={`${cellW / 3};${cellW / 1.4}`} dur="2.2s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" values="0.8;0" dur="2.2s" repeatCount="indefinite" />
+                        <animate attributeName="r" values={`${cellW / 3.4};${cellW / 1.1}`} dur="1.8s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="0.85;0" dur="1.8s" repeatCount="indefinite" />
                       </circle>
                     )}
-                    {/* Indicator pointer */}
+
+                    {/* Core target emitter element */}
+                    <circle
+                      cx={rx}
+                      cy={ry}
+                      r={cellW / 7}
+                      fill={isActivated ? rColor : "transparent"}
+                      stroke={rColor}
+                      strokeWidth="1"
+                      className={isActivated ? "receiver-glow" : ""}
+                    />
+
+                    {/* Center Code letter indicator */}
                     <text 
                       x={rx} 
-                      y={ry + cellW / 12} 
-                      fill={isActivated ? "#000000" : rColor} 
-                      fontSize={cellW / 3.5} 
+                      y={ry + cellW / 11} 
+                      fill={isActivated ? "#03060f" : rColor} 
+                      fontSize={cellW / 4.2} 
                       fontFamily="var(--font-mono)"
                       textAnchor="middle" 
-                      fontWeight="bold"
+                      fontWeight="900"
+                      style={{ pointerEvents: "none" }}
                     >
                       {receiver.color.charAt(0).toUpperCase()}
                     </text>
@@ -703,7 +1066,7 @@ export default function App() {
                 );
               })}
 
-              {/* Draw Emitters */}
+              {/* Draw Emitters (Hi-tech power lasers) */}
               {level.emitters.map((emitter, idx) => {
                 const cellW = 84 / level.gridSize;
                 const cellH = 84 / level.gridSize;
@@ -711,26 +1074,60 @@ export default function App() {
                 const ey = 8 + emitter.y * cellH + cellH / 2;
                 const isActive = emitter.activeIn === "both" || emitter.activeIn === solsticeMode;
                 const eColor = emitter.color === "red" ? "var(--laser-red)" : emitter.color === "green" ? "var(--laser-green)" : emitter.color === "yellow" ? "var(--laser-yellow)" : emitter.color === "blue" ? "var(--laser-blue)" : "var(--laser-white)";
+                
+                // Rotation angle based on emitter facing direction (N, E, S, W)
+                const angle = { "N": 270, "E": 0, "S": 90, "W": 180 }[emitter.direction] || 0;
 
                 return (
-                  <g key={`emitter-${idx}`} opacity={isActive ? 1 : 0.2}>
+                  <g key={`emitter-${idx}`} opacity={isActive ? 1 : 0.15}>
+                    {/* Orbiting core indicator ring */}
+                    <circle
+                      cx={ex}
+                      cy={ey}
+                      r={cellW / 2.3}
+                      fill="none"
+                      stroke={eColor}
+                      strokeWidth="0.4"
+                      strokeDasharray="1, 3"
+                      opacity="0.4"
+                    />
+
+                    {/* Base mounting deck */}
                     <rect
                       x={8 + emitter.x * cellW + cellW / 4}
                       y={8 + emitter.y * cellH + cellH / 4}
                       width={cellW / 2}
                       height={cellH / 2}
-                      rx="3"
-                      fill="rgba(8, 12, 28, 0.95)"
-                      stroke={eColor}
-                      strokeWidth="1.2"
+                      rx="4"
+                      fill="url(#emitter-housing-grad)"
+                      stroke="rgba(0, 240, 255, 0.2)"
+                      strokeWidth="0.8"
                     />
+
+                    {/* Nozzle lens - Rotates towards firing direction */}
+                    <g transform={`rotate(${angle}, ${ex}, ${ey})`}>
+                      {/* Nozzle barrel */}
+                      <path
+                        d={`M ${ex + cellW/6} ${ey - cellW/10} L ${ex + cellW/2.5} ${ey - cellW/15} L ${ex + cellW/2.5} ${ey + cellW/15} L ${ex + cellW/6} ${ey + cellW/10} Z`}
+                        fill="#0b1126"
+                        stroke={eColor}
+                        strokeWidth="0.8"
+                      />
+                      {/* Barrel heat fins */}
+                      <line x1={ex + cellW/4} y1={ey - cellW/8} x2={ex + cellW/4} y2={ey + cellW/8} stroke={eColor} strokeWidth="0.8" opacity="0.6" />
+                      <line x1={ex + cellW/3} y1={ey - cellW/8} x2={ex + cellW/3} y2={ey + cellW/8} stroke={eColor} strokeWidth="0.8" opacity="0.6" />
+                    </g>
+
+                    {/* Inner glowing reactor core */}
                     <circle
                       cx={ex}
                       cy={ey}
-                      r={cellW / 8}
+                      r={cellW / 6.5}
                       fill={eColor}
                       style={{ filter: isActive ? `drop-shadow(0 0 6px ${eColor})` : "none" }}
-                    />
+                    >
+                      <animate attributeName="r" values={`${cellW / 7.5};${cellW / 6.2};${cellW / 7.5}`} dur="2s" repeatCount="indefinite" />
+                    </circle>
                   </g>
                 );
               })}
@@ -743,6 +1140,7 @@ export default function App() {
                 const x = 8 + cx * cellW;
                 const y = 8 + cy * cellH;
                 const center = cellW / 2;
+                const padding = cellW * 0.06;
 
                 return (
                   <g 
@@ -751,37 +1149,45 @@ export default function App() {
                     onClick={() => handleCellClick(cx, cy)}
                     style={{ cursor: "pointer" }}
                   >
-                    {/* Base housing */}
+                    {/* Modular housing base */}
                     <rect
-                      x={x + 1.5}
-                      y={y + 1.5}
-                      width={cellW - 3}
-                      height={cellH - 3}
-                      rx="4"
-                      fill="rgba(4, 8, 20, 0.85)"
-                      stroke="rgba(0, 240, 255, 0.2)"
-                      strokeWidth="0.75"
+                      x={x + padding}
+                      y={y + padding}
+                      width={cellW - padding * 2}
+                      height={cellH - padding * 2}
+                      rx="6"
+                      fill="url(#emitter-housing-grad)"
+                      stroke="rgba(0, 240, 255, 0.25)"
+                      strokeWidth="0.8"
                     />
 
                     {/* Component Icon drawing */}
                     {comp.type === "mirror" && (
                       <g>
-                        {/* Reflective strip diagonal '/' */}
+                        {/* Rotary calibration gear at center */}
+                        <circle cx={x + center} cy={y + center} r={cellW / 4.8} fill="none" stroke="rgba(0, 240, 255, 0.2)" strokeWidth="0.8" strokeDasharray="2, 2" />
+                        <circle cx={x + center} cy={y + center} r={cellW / 8} fill="#0d1222" stroke="rgba(0, 240, 255, 0.3)" strokeWidth="0.8" />
+                        
+                        {/* Mirror bracket anchors */}
+                        <line x1={x + 3.5} y1={y + cellH - 3.5} x2={x + 7} y2={y + cellH - 7} stroke="#94a3b8" strokeWidth="1.2" />
+                        <line x1={x + cellW - 7} y1={y + 7} x2={x + cellW - 3.5} y2={y + 3.5} stroke="#94a3b8" strokeWidth="1.2" />
+
+                        {/* Reflective glass pane diagonal '/' */}
                         <line
-                          x1={x + 4}
-                          y1={y + cellH - 4}
-                          x2={x + cellW - 4}
-                          y2={y + 4}
+                          x1={x + 4.5}
+                          y1={y + cellH - 4.5}
+                          x2={x + cellW - 4.5}
+                          y2={y + 4.5}
                           stroke="#ffffff"
-                          strokeWidth="3.5"
+                          strokeWidth="3.2"
                           strokeLinecap="round"
                         />
-                        {/* Core glow line */}
+                        {/* Reflective core glow line */}
                         <line
-                          x1={x + 4}
-                          y1={y + cellH - 4}
-                          x2={x + cellW - 4}
-                          y2={y + 4}
+                          x1={x + 4.5}
+                          y1={y + cellH - 4.5}
+                          x2={x + cellW - 4.5}
+                          y2={y + 4.5}
                           stroke={varColorSolstice()}
                           strokeWidth="1"
                           style={{ filter: `drop-shadow(0 0 3px ${varColorSolstice()})` }}
@@ -791,60 +1197,80 @@ export default function App() {
 
                     {comp.type === "splitter" && (
                       <g>
+                        {/* Calibration ring */}
+                        <circle cx={x + center} cy={y + center + 1} r={cellW / 3} fill="none" stroke="rgba(0, 136, 255, 0.15)" strokeWidth="0.6" strokeDasharray="1, 2" />
+                        
                         {/* Glass Prism triangle */}
                         <polygon
-                          points={`${x + center},${y + 4} ${x + 4},${y + cellH - 4} ${x + cellW - 4},${y + cellH - 4}`}
-                          fill="rgba(0, 136, 255, 0.15)"
+                          points={`${x + center},${y + cellH * 0.2} ${x + cellW * 0.2},${y + cellH * 0.8} ${x + cellW * 0.8},${y + cellH * 0.8}`}
+                          fill="rgba(0, 136, 255, 0.2)"
                           stroke="#0088ff"
-                          strokeWidth="1"
+                          strokeWidth="1.2"
+                          style={{ filter: "drop-shadow(0 1px 3px rgba(0,136,255,0.3))" }}
                         />
-                        <circle cx={x + center} cy={y + center + 2} r="1.5" fill="#ffffff" />
+                        {/* Prismatic internal refraction lines */}
+                        <line x1={x + center} y1={y + cellH * 0.25} x2={x + center} y2={y + cellH * 0.78} stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.6" />
+                        <line x1={x + center} y1={y + cellH * 0.45} x2={x + cellW * 0.35} y2={y + cellH * 0.78} stroke="rgba(255, 51, 51, 0.5)" strokeWidth="0.6" />
+                        <line x1={x + center} y1={y + cellH * 0.45} x2={x + cellW * 0.65} y2={y + cellH * 0.78} stroke="rgba(0, 255, 136, 0.5)" strokeWidth="0.6" />
+                        
+                        {/* Specular highlight node */}
+                        <circle cx={x + center} cy={y + cellH * 0.25} r="1" fill="#ffffff" style={{ filter: "drop-shadow(0 0 2px #ffffff)" }} />
                       </g>
                     )}
 
                     {comp.type === "filter_red" && (
                       <g>
-                        {/* Filter vertical colored slit */}
+                        {/* Filter frame details */}
+                        <line x1={x + 3.5} y1={y + cellH/2} x2={x + cellW - 3.5} y2={y + cellH/2} stroke="rgba(255, 51, 51, 0.2)" strokeWidth="0.8" />
+                        {/* Plasma glowing energy slit */}
                         <rect
-                          x={x + center - 2}
-                          y={y + 4}
-                          width="4"
-                          height={cellH - 8}
-                          fill="rgba(255, 51, 51, 0.35)"
+                          x={x + center - 2.5}
+                          y={y + cellH * 0.15}
+                          width="5"
+                          height={cellH * 0.7}
+                          fill="rgba(255, 51, 51, 0.3)"
                           stroke="var(--laser-red)"
-                          strokeWidth="1"
-                          rx="1"
+                          strokeWidth="1.2"
+                          rx="1.5"
+                          style={{ filter: "drop-shadow(0 0 3px var(--laser-red))" }}
                         />
+                        <line x1={x + center} y1={y + cellH * 0.2} x2={x + center} y2={y + cellH * 0.8} stroke="#ffffff" strokeWidth="0.6" opacity="0.8" />
                       </g>
                     )}
 
-                     {comp.type === "filter_green" && (
+                    {comp.type === "filter_green" && (
                       <g>
+                        <line x1={x + 3.5} y1={y + cellH/2} x2={x + cellW - 3.5} y2={y + cellH/2} stroke="rgba(0, 255, 136, 0.2)" strokeWidth="0.8" />
                         <rect
-                          x={x + center - 2}
-                          y={y + 4}
-                          width="4"
-                          height={cellH - 8}
-                          fill="rgba(0, 255, 136, 0.35)"
+                          x={x + center - 2.5}
+                          y={y + cellH * 0.15}
+                          width="5"
+                          height={cellH * 0.7}
+                          fill="rgba(0, 255, 136, 0.3)"
                           stroke="var(--laser-green)"
-                          strokeWidth="1"
-                          rx="1"
+                          strokeWidth="1.2"
+                          rx="1.5"
+                          style={{ filter: "drop-shadow(0 0 3px var(--laser-green))" }}
                         />
+                        <line x1={x + center} y1={y + cellH * 0.2} x2={x + center} y2={y + cellH * 0.8} stroke="#ffffff" strokeWidth="0.6" opacity="0.8" />
                       </g>
                     )}
 
                     {comp.type === "filter_blue" && (
                       <g>
+                        <line x1={x + 3.5} y1={y + cellH/2} x2={x + cellW - 3.5} y2={y + cellH/2} stroke="rgba(0, 136, 255, 0.2)" strokeWidth="0.8" />
                         <rect
-                          x={x + center - 2}
-                          y={y + 4}
-                          width="4"
-                          height={cellH - 8}
-                          fill="rgba(0, 136, 255, 0.35)"
+                          x={x + center - 2.5}
+                          y={y + cellH * 0.15}
+                          width="5"
+                          height={cellH * 0.7}
+                          fill="rgba(0, 136, 255, 0.3)"
                           stroke="var(--laser-blue)"
-                          strokeWidth="1"
-                          rx="1"
+                          strokeWidth="1.2"
+                          rx="1.5"
+                          style={{ filter: "drop-shadow(0 0 3px var(--laser-blue))" }}
                         />
+                        <line x1={x + center} y1={y + cellH * 0.2} x2={x + center} y2={y + cellH * 0.8} stroke="#ffffff" strokeWidth="0.6" opacity="0.8" />
                       </g>
                     )}
                   </g>
@@ -861,6 +1287,7 @@ export default function App() {
                 const y2 = 8 + path.y2 * cellH + cellH / 2;
                 
                 const beamColor = path.color === "red" ? "var(--laser-red)" : path.color === "green" ? "var(--laser-green)" : path.color === "yellow" ? "var(--laser-yellow)" : path.color === "blue" ? "var(--laser-blue)" : "var(--laser-white)";
+                const isJunctionWithinBoard = path.x2 >= 0 && path.x2 < level.gridSize && path.y2 >= 0 && path.y2 < level.gridSize;
 
                 return (
                   <g key={`laser-${idx}`} style={{ pointerEvents: "none" }}>
@@ -894,6 +1321,19 @@ export default function App() {
                       y2={y2}
                       className="laser-beam-core"
                     />
+                    
+                    {/* Glowing spark and ripple ring at optical junctions */}
+                    {isJunctionWithinBoard && (
+                      <g>
+                        {/* Ripple ring */}
+                        <circle cx={x2} cy={y2} r={cellW / 12} fill="none" stroke={beamColor} strokeWidth="0.8" opacity="0.8">
+                          <animate attributeName="r" values={`${cellW / 12};${cellW / 3.5}`} dur="1.4s" repeatCount="indefinite" />
+                          <animate attributeName="opacity" values="0.8;0" dur="1.4s" repeatCount="indefinite" />
+                        </circle>
+                        {/* Core spark */}
+                        <circle cx={x2} cy={y2} r={cellW / 16} fill="#ffffff" style={{ filter: `drop-shadow(0 0 4px ${beamColor})` }} />
+                      </g>
+                    )}
                   </g>
                 );
               })}
@@ -971,6 +1411,7 @@ export default function App() {
           </div>
 
           <div className="crt-screen">
+            <MatrixRain />
             {isApiLocked ? (
               <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", fontFamily: "var(--font-mono)", color: "var(--crt-color)" }}>
                 <div style={{ textAlign: "center", marginBottom: "16px" }}>

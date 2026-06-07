@@ -8,13 +8,21 @@ function getAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
   return audioCtx;
 }
 
 export const audio = {
+  // Resume suspended AudioContext on user interaction
+  resume() {
+    try {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch(() => {}); // catch to prevent warnings
+      }
+    } catch (e) {
+      // ignore
+    }
+  },
   // 1. Play typing click sound (CRT terminal typing keystrokes)
   playClick() {
     try {

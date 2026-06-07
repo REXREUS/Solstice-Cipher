@@ -1,0 +1,1136 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap');
+
+:root {
+  /* Sci-fi Holographic Theme Colors */
+  --bg-dark: #03060f;
+  --bg-panel: rgba(6, 11, 28, 0.65);
+  --bg-panel-solid: #060b1c;
+  --border-neon: rgba(0, 240, 255, 0.15);
+  --border-neon-active: rgba(245, 158, 11, 0.45);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+
+  /* Solstice cycle default (Day: High-energy solar amber) */
+  --solstice-color: #f59e0b;
+  --solstice-glow: rgba(245, 158, 11, 0.4);
+  --solstice-bg-glow: radial-gradient(circle at 50% 30%, rgba(245, 158, 11, 0.08) 0%, rgba(3, 6, 15, 0) 70%);
+
+  /* Laser colors */
+  --laser-red: #ff3333;
+  --laser-green: #00ff88;
+  --laser-blue: #0088ff;
+  --laser-yellow: #ffdd00;
+  --laser-white: #ffffff;
+
+  /* Retro CRT terminal variables */
+  --crt-color: #39ff14;
+  --crt-bg: #020703;
+  --crt-glow: rgba(57, 255, 20, 0.3);
+  
+  --font-display: 'Rajdhani', sans-serif;
+  --font-header: 'Orbitron', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  
+  --theme-transition: background 0.8s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.8s ease, box-shadow 0.8s ease;
+}
+
+/* Night Theme overrides (Night: Cyberpunk deep space cyan) */
+[data-theme="night"] {
+  --solstice-color: #00f0ff;
+  --solstice-glow: rgba(0, 240, 255, 0.4);
+  --solstice-bg-glow: radial-gradient(circle at 50% 30%, rgba(0, 240, 255, 0.08) 0%, rgba(3, 6, 15, 0) 70%);
+  --border-neon-active: rgba(0, 240, 255, 0.45);
+}
+
+/* Reset and Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+  background-image: var(--solstice-bg-glow);
+  background-attachment: fixed;
+  background-size: cover;
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  transition: var(--theme-transition);
+}
+
+/* Starfield canvas overlay */
+canvas {
+  filter: blur(0.5px);
+}
+
+/* Sci-fi HUD scanlines overlay on whole page */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.12) 50%);
+  z-index: 9999;
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(3, 6, 15, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--solstice-color);
+}
+
+/* Glassmorphism Panel styles - Sci-Fi Edition */
+.glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-neon);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition: var(--theme-transition);
+}
+
+/* Tech panel corner brackets decoration */
+.glass-panel::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--solstice-color) 0%, transparent 20%, transparent 80%, var(--solstice-color) 100%);
+  opacity: 0.3;
+  transition: var(--theme-transition);
+}
+
+.glass-panel.active {
+  border-color: var(--border-neon-active);
+  box-shadow: 0 15px 50px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 158, 11, 0.08);
+}
+
+[data-theme="night"] .glass-panel.active {
+  box-shadow: 0 15px 50px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.08);
+}
+
+/* Typography elements */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-header);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+/* Main Layout Grid */
+.game-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  border-bottom: 2px solid rgba(0, 240, 255, 0.1);
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  fill: var(--solstice-color);
+  filter: drop-shadow(0 0 8px var(--solstice-color));
+  animation: logo-pulse 3s infinite ease-in-out;
+  transition: var(--theme-transition);
+}
+
+.logo-text {
+  font-family: var(--font-header);
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, #ffffff 40%, var(--solstice-color) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: var(--theme-transition);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Solstice toggle button */
+.solstice-toggle {
+  background: rgba(3, 6, 15, 0.6);
+  border: 1px solid var(--solstice-color);
+  border-radius: 4px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-header);
+  font-weight: 600;
+  color: var(--solstice-color);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+  transition: all 0.3s ease;
+}
+
+.solstice-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 15px var(--solstice-glow);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.solstice-toggle-icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Standard Buttons styling */
+.btn-primary {
+  background: rgba(3, 6, 15, 0.5);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 14px;
+  color: var(--text-secondary);
+  font-family: var(--font-header);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary:hover {
+  background: rgba(0, 240, 255, 0.05);
+  border-color: var(--solstice-color);
+  color: #ffffff;
+  box-shadow: 0 0 8px var(--solstice-glow);
+}
+
+.btn-solstice {
+  background: var(--solstice-color);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 18px;
+  color: #03060f;
+  font-family: var(--font-header);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 4px 14px var(--solstice-glow);
+  transition: all 0.3s ease;
+}
+
+.btn-solstice:hover {
+  box-shadow: 0 6px 18px var(--solstice-glow);
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* Board Game Grid Layout */
+.game-grid-layout {
+  display: grid;
+  grid-template-columns: 310px 1fr 430px;
+  gap: 16px;
+  flex-grow: 1;
+}
+
+@media (max-width: 1280px) {
+  .game-grid-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Sidebar - Levels & Lore */
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.sidebar-title {
+  font-size: 14px;
+  font-family: var(--font-header);
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+  padding-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.level-card {
+  background: rgba(3, 6, 15, 0.4);
+  border: 1px solid rgba(0, 240, 255, 0.08);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.level-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 3px;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.level-card:hover {
+  background: rgba(0, 240, 255, 0.03);
+  transform: translateX(3px);
+  border-color: rgba(0, 240, 255, 0.2);
+}
+
+.level-card.active {
+  background: rgba(6, 11, 28, 0.9);
+  border-color: var(--solstice-color);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.level-card.active::before {
+  background: var(--solstice-color);
+}
+
+.level-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--solstice-color);
+  margin-bottom: 2px;
+  transition: var(--theme-transition);
+}
+
+.level-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.level-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Center Panel - Puzzle Grid */
+.puzzle-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  position: relative;
+  background: radial-gradient(circle at center, rgba(6, 11, 28, 0.4) 0%, rgba(3, 6, 15, 0.8) 100%);
+}
+
+/* Puzzle Board Bezel Frame - Cyberpunk hardware simulator */
+.puzzle-board-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 530px;
+  aspect-ratio: 1 / 1;
+  background: #02040a;
+  border: 12px solid #0d1222;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 
+              inset 0 0 30px rgba(0, 0, 0, 0.8),
+              0 0 0 1px rgba(0, 240, 255, 0.1);
+  overflow: hidden;
+  margin: auto 0;
+}
+
+/* Tech panel corner elements inside board bezel */
+.puzzle-board-wrapper::before {
+  content: "TACTICAL OBSERVATION GRID // REFRACTOR CALIBRATOR";
+  position: absolute;
+  top: 3px; left: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  z-index: 10;
+}
+
+.puzzle-board-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Cyan Hologram Grid cells */
+.grid-cell {
+  fill: rgba(0, 240, 255, 0.01);
+  stroke: rgba(0, 240, 255, 0.05);
+  stroke-width: 0.5;
+  transition: all 0.2s ease;
+}
+
+.grid-cell:hover {
+  fill: rgba(0, 240, 255, 0.04);
+  stroke: rgba(0, 240, 255, 0.2);
+  cursor: pointer;
+}
+
+/* Grid coordinate text markers */
+.grid-coordinate {
+  font-family: var(--font-mono);
+  fill: var(--text-muted);
+  font-size: 2.8px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+/* Glowing laser lines styling */
+.laser-beam {
+  stroke-linecap: round;
+  animation: laser-pulse 2.5s infinite ease-in-out;
+}
+
+.laser-beam-core {
+  stroke: #ffffff;
+  stroke-linecap: round;
+  stroke-width: 1;
+}
+
+/* Energy pulses flowing along laser beams */
+.laser-beam-pulse {
+  stroke-dasharray: 4, 10;
+  animation: laser-flow 1.2s infinite linear;
+  stroke-linecap: round;
+}
+
+@keyframes laser-flow {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+/* Control Panel Toolbox - Hardware bezels */
+.toolbox-bezel {
+  width: 100%;
+  background: rgba(8, 12, 28, 0.85);
+  border-top: 1px solid rgba(0, 240, 255, 0.15);
+  padding: 12px 20px;
+  margin-top: 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.toolbox-header {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.toolbox {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.tool-item {
+  flex: 1;
+  max-width: 76px;
+  height: 58px;
+  border-radius: 4px;
+  background: rgba(3, 6, 15, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tool-item:hover {
+  background: rgba(0, 240, 255, 0.05);
+  border-color: rgba(0, 240, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.tool-item.active {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: var(--solstice-color);
+  box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.15), 0 0 12px var(--solstice-glow);
+}
+
+[data-theme="night"] .tool-item.active {
+  background: rgba(0, 240, 255, 0.06);
+  box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.15), 0 0 12px var(--solstice-glow);
+}
+
+.tool-icon {
+  width: 20px;
+  height: 20px;
+  stroke: var(--text-secondary);
+  stroke-width: 1.5;
+  fill: none;
+  transition: all 0.2s;
+}
+
+.tool-item.active .tool-icon {
+  stroke: var(--solstice-color);
+  filter: drop-shadow(0 0 3px var(--solstice-glow));
+}
+
+.tool-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tool-item.active .tool-label {
+  color: var(--solstice-color);
+}
+
+.tool-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--solstice-color);
+  color: #03060f;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  border-radius: 2px;
+  padding: 0 4px;
+  min-width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: var(--theme-transition);
+}
+
+/* Right Panel - CRT retro terminal */
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: calc(100vh - 120px);
+  min-height: 550px;
+}
+
+.terminal-header {
+  background: rgba(2, 5, 12, 0.8);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terminal-title-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--crt-color);
+  box-shadow: 0 0 6px var(--crt-color);
+  animation: pulse-dot 1.5s infinite ease-in-out;
+}
+
+.terminal-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--crt-color);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* CRT monitor screen bevel and scanline filter overlay */
+.crt-screen {
+  background-color: var(--crt-bg);
+  flex-grow: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.95);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+/* Phosphor scanline overlays */
+.crt-screen::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  z-index: 2;
+  background-size: 100% 4px, 8px 100%;
+  pointer-events: none;
+}
+
+/* Bevel edge CRT screen vignette */
+.crt-screen::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: radial-gradient(circle, transparent 65%, rgba(0, 0, 0, 0.8) 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.crt-scroll-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+  margin-bottom: 12px;
+}
+
+.crt-message {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.crt-message.system {
+  color: var(--text-muted);
+  border-left: 2px solid var(--text-muted);
+  padding-left: 6px;
+  font-size: 11px;
+}
+
+.crt-message.ai {
+  color: var(--crt-color);
+  text-shadow: 0 0 6px var(--crt-glow);
+}
+
+.crt-message.player {
+  color: #00b0ff;
+  text-shadow: 0 0 6px rgba(0, 176, 255, 0.3);
+  text-align: right;
+  margin-left: 15%;
+  background: rgba(0, 176, 255, 0.03);
+  padding: 6px 10px;
+  border-radius: 4px;
+  align-self: flex-end;
+  border-right: 2px solid #00b0ff;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+}
+
+.typing-dot {
+  width: 4px;
+  height: 4px;
+  background: var(--crt-color);
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* CRT Input line */
+.crt-input-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(57, 255, 20, 0.15);
+  padding-top: 12px;
+  font-family: var(--font-mono);
+  color: var(--crt-color);
+  position: relative;
+  z-index: 5;
+}
+
+.crt-prompt {
+  text-shadow: 0 0 4px var(--crt-glow);
+  font-weight: bold;
+}
+
+.crt-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--crt-color);
+  text-shadow: 0 0 4px var(--crt-glow);
+}
+
+/* Modals Overlay style */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(2, 4, 10, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  opacity: 0;
+  animation: fade-in 0.25s forwards ease;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 600px;
+  margin: 16px;
+  padding: 24px;
+  border-color: rgba(0, 240, 255, 0.25);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.9), 0 0 30px rgba(0, 240, 255, 0.05);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-family: var(--font-header);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  stroke: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  stroke: var(--solstice-color);
+  transform: rotate(90deg);
+}
+
+/* Input Fields styling - Sci-Fi style */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.input-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input {
+  width: 100%;
+  background: rgba(2, 4, 10, 0.7);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 4px;
+  padding: 10px 14px;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--solstice-color);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+/* Lore Database layout */
+.lore-grid {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 20px;
+  height: 380px;
+}
+
+.lore-sidebar {
+  border-right: 1px solid rgba(0, 240, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.lore-tab {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-family: var(--font-header);
+  transition: all 0.2s;
+  background: rgba(3, 6, 15, 0.3);
+  border: 1px solid rgba(0, 240, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.lore-tab:hover {
+  background: rgba(0, 240, 255, 0.04);
+  color: #ffffff;
+}
+
+.lore-tab.active {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--solstice-color);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.05);
+}
+
+.lore-tab.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.lore-body {
+  overflow-y: auto;
+  padding-left: 8px;
+}
+
+.lore-title {
+  margin-bottom: 6px;
+  color: #ffffff;
+  font-size: 18px;
+  font-family: var(--font-header);
+}
+
+.lore-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--solstice-color);
+  margin-bottom: 12px;
+}
+
+.lore-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Achievement Panel */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.achievement-badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 8px;
+  border-radius: 6px;
+  background: rgba(3, 6, 15, 0.5);
+  border: 1px solid rgba(0, 240, 255, 0.05);
+  opacity: 0.35;
+  transition: all 0.3s ease;
+}
+
+.achievement-badge-card.unlocked {
+  opacity: 1;
+  background: rgba(245, 158, 11, 0.03);
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.05);
+}
+
+.achievement-badge-icon {
+  width: 38px;
+  height: 38px;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  transition: all 0.3s ease;
+}
+
+.achievement-badge-card.unlocked .achievement-badge-icon {
+  stroke: var(--solstice-color);
+  filter: drop-shadow(0 0 6px var(--solstice-glow));
+}
+
+.achievement-badge-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 8px;
+  color: #ffffff;
+  font-family: var(--font-header);
+}
+
+.achievement-badge-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Achievement Toast notifications */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast-achievement {
+  background: rgba(2, 4, 10, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--solstice-color);
+  border-radius: 6px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 15px var(--solstice-glow);
+  transform: translateX(-120%);
+  animation: slide-in-toast 0.4s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.toast-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.toast-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--solstice-color);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.toast-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+  font-family: var(--font-header);
+}
+
+/* UI Verdict Buttons overlay */
+.verdict-overlay-box {
+  background: rgba(2, 4, 10, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.verdict-overlay-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.verdict-button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.verdict-btn {
+  background: rgba(3, 6, 15, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: var(--font-header);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.verdict-btn.human:hover {
+  background: rgba(0, 255, 136, 0.06);
+  border-color: var(--laser-green);
+  color: var(--laser-green);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+}
+
+.verdict-btn.ai:hover {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: var(--laser-red);
+  color: var(--laser-red);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+/* Animations declarations */
+@keyframes logo-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px var(--solstice-color)); }
+  50% { transform: scale(1.05); filter: drop-shadow(0 0 14px var(--solstice-color)); }
+}
+
+@keyframes laser-pulse {
+  0%, 100% { opacity: 0.8; stroke-width: 3; }
+  50% { opacity: 1; stroke-width: 4.5; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes typing-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes fade-in {
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-toast {
+  to { transform: translateX(0); }
+}
+
+@keyframes crt-flicker {
+  0% { opacity: 0.27861; }
+  5% { opacity: 0.34769; }
+  10% { opacity: 0.23604; }
+  15% { opacity: 0.90626; }
+  20% { opacity: 0.18128; }
+  25% { opacity: 0.83891; }
+  30% { opacity: 0.65583; }
+  35% { opacity: 0.67807; }
+  40% { opacity: 0.26559; }
+  45% { opacity: 0.84693; }
+  50% { opacity: 0.96019; }
+  55% { opacity: 0.13594; }
+  60% { opacity: 0.88013; }
+  65% { opacity: 0.48513; }
+  70% { opacity: 0.81056; }
+  75% { opacity: 0.17466; }
+  80% { opacity: 0.94967; }
+  85% { opacity: 0.52845; }
+  90% { opacity: 0.61385; }
+  95% { opacity: 0.90233; }
+  100% { opacity: 0.42873; }
+}
+
+/* Placed component cell hover highlights */
+g[transform] rect:hover {
+  stroke: var(--solstice-color) !important;
+  filter: drop-shadow(0 0 5px var(--solstice-glow));
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pulse keyframes for glowing components */
+.receiver-glow {
+  animation: receiver-pulse-glow 2.5s infinite ease-in-out;
+}
+
+@keyframes receiver-pulse-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}

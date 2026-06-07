@@ -23,7 +23,7 @@ export async function sendMessageToGemini(apiKey, chatHistory, npcProfile) {
       }
     };
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",

@@ -27,7 +27,7 @@
 
 - **Core Tech**: React (State, Effects, Refs), Vite, Vanilla CSS, and SVG overlays.
 - **Light propagation Engine**: A recursive **Depth-First Search (DFS) Raycaster** that calculates splits, reflections, color transitions, and handles loop prevention automatically.
-- **GenAI Interface**: Integrated with Google's `gemini-1.5-flash` utilizing system personas context mapped to specific historical or fictional figures (Turing-AI, Freedom Collective, Solstice Warden, and Marsha-AI).
+- **GenAI Interface**: Integrated with Google's `gemma-4-26b-a4b-it` utilizing system personas context mapped to specific historical or fictional figures (Turing-AI, Freedom Collective, Solstice Warden, and Marsha-AI).
 
 ---
 

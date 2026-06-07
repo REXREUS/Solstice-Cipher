@@ -1100,17 +1100,21 @@ p {
 
 /* UI Verdict Buttons overlay */
 .verdict-overlay-box {
-  background: rgba(2, 4, 10, 0.9);
-  border: 1px solid rgba(0, 240, 255, 0.15);
-  border-radius: 6px;
+  background: rgba(4, 8, 20, 0.95);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 8px;
   padding: 12px;
   margin-top: auto;
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  flex-shrink: 0; /* Prevent panels from being squeezed out */
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.15);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 6; /* Render above the vignette overlay */
 }
+
 
 .verdict-overlay-title {
   font-family: var(--font-mono);
